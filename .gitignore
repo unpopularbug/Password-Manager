@@ -1,0 +1,6 @@
+.env
+venv/
+App/migrations/
+App/__pycache__/
+
+Manager/__pycache__/
