@@ -1,0 +1,54 @@
+from django.http import JsonResponse
+from rest_framework.response import Response
+from rest_framework import status, viewsets, permissions
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
+from cryptography.fernet import Fernet
+
+from .models import CustomUser, Password
+from .serializers import UserSerializer, PasswordSerializer
+
+#pylint: disable=no-member
+class UserViewset(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    
+    @action(methods=['POST'], detail=False, permission_classes=[permissions.AllowAny])
+    def register(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        
+        return JsonResponse(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
+
+class PasswordViewset(viewsets.ModelViewSet):
+    queryset = Password.objects.all()
+    serializer_class = PasswordSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        validated_data = serializer.validated_data
+        
+        key = Fernet.generate_key()
+        fernet = Fernet(key)
+        encrypted_email = fernet.encrypt(validated_data['email_used'].encode())
+        encrypted_username = fernet.encrypt(validated_data['username_used'].encode())
+        encrypted_password = fernet.encrypt(validated_data['password'].encode())
+        
+        password_instance = serializer.save(
+            email_used=encrypted_email,
+            username_used=encrypted_username,
+            password=encrypted_password,
+        )
+
+        response_serializer = PasswordSerializer(password_instance)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
