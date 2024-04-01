@@ -1,20 +1,23 @@
 from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
+from django.contrib.auth import login
+from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 
 from .models import CustomUser, Password
-from .serializers import UserSerializer, PasswordSerializer
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes=[permissions.AllowAny]
     
-    @action(methods=['POST'], detail=False, permission_classes=[permissions.AllowAny])
+    @action(methods=['POST'], detail=False)
     def register(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -24,10 +27,24 @@ class UserViewset(viewsets.ModelViewSet):
         return JsonResponse(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         
 
+class LoginViewset(APIView):
+    serializer_class = LoginSerializer
+    permission_classes = [permissions.AllowAny]
+
+    @action(methods=['POST'], detail=False)
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        login(request, user)
+        return Response(status=status.HTTP_200_OK)
+    
+    
 class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

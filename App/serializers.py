@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from django.contrib.auth import authenticate
+
 from .models import CustomUser, Password
 
 #pylint: disable=no-member
@@ -17,6 +19,26 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [ "id", "email", "password"]
+
+ 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+            user = authenticate(email=email, password=password)
+            if not user:
+                msg = 'Access denied: wrong email or password.'
+                raise serializers.ValidationError(msg, code='authorization')
+        else:
+            msg = 'Both "email" and "password" are required.'
+            raise serializers.ValidationError(msg, code='authorization')
+        attrs['user'] = user
+        return attrs
 
 
 class PasswordSerializer(serializers.ModelSerializer):
