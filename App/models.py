@@ -55,11 +55,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 class Password(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False, related_name='owner')
-    application_name = models.CharField(max_length=20, null=True)
-    site_url = models.CharField(max_length=255, null=True, blank=True)
+    site_name_or_url = models.CharField(max_length=255, null=True, blank=False)
     email_used = models.EmailField(null=True, blank=True)
     username_used = models.CharField(max_length=25, null=True, blank=True)
     password = models.CharField(max_length=128, null=True)
     
     def __str__(self):
-        return f"{self.application_name} - {self.owner.email}"
+        return f"{self.site_name_or_url} - {self.owner.email}"
