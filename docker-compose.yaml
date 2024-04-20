@@ -3,7 +3,5 @@ services:
     build: .
     ports:
       - '${PORT}:8000'
-    environment:
-      - SECRET_KEY = django-insecure-%$#0lb8g&f*aq-z5mx7yj*(8j&g95d1(f^^6+azx0_ht)iac91
   redis:
     image: 'redis:slim'
