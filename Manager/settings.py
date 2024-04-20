@@ -1,4 +1,6 @@
 import os
+import environ
+import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
@@ -7,13 +9,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ['SECRET_KEY']
 
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+ENVIRONMENT = os.environ['ENVIRONMENT']
 
-if DEBUG:
-    from .dev_settings import *
+if ENVIRONMENT == 'development':
+    DEBUG = True
 else:
-    from .prod_settings import *
+    DEBUG = False
     
+
+env = environ.Env()
+
+environ.Env.read_env()
+
+DATABASES = {
+    'default': dj_database_url.parse(env('DATABASE_URL'))
+}
+
     
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev-password-manager.up.railway.app']
 
