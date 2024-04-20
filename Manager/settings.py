@@ -7,8 +7,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ['SECRET_KEY']
 
-DEBUG = True
-    
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+if DEBUG:
+    from .dev_settings import *
+else:
+    from .prod_settings import *
 ALLOWED_HOSTS = ['*']
 
 

@@ -4,7 +4,6 @@ from rest_framework import status, viewsets, permissions
 from django.contrib.auth import login
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 
@@ -18,7 +17,7 @@ class UserViewset(viewsets.ModelViewSet):
     permission_classes=[permissions.AllowAny]
     
     @action(methods=['POST'], detail=False)
-    def register(self, request, *args, **kwargs):
+    def register(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -49,7 +48,7 @@ class PasswordViewset(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
     
-    def create(self, request, *args, **kwargs):
+    def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
