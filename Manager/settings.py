@@ -15,12 +15,17 @@ else:
     from .prod_settings import *
     
     
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
+CSRF_TRUSTED_ORIGINS = ['*']
+
+INTERNAL_IPS = (
+    '127.0.0.1',
+    'localhost:8000',
+)
 
 INSTALLED_APPS = [
     'jazzmin',
-    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -62,17 +67,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Manager.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': os.environ['db_engine'],
-        'NAME': os.environ['db_name'],
-        'USER': os.environ['db_user'],
-        'PASSWORD': os.environ['db_password'],
-        'HOST': os.environ['db_host'],
-        'PORT': os.environ['db_port'],
-        'OPTIONS': {'sslmode': 'require'},
-    },
-}
 
 AUTH_PASSWORD_VALIDATORS = [
     {

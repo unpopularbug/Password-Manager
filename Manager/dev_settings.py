@@ -1,19 +1,14 @@
-import os
+import environ
+import dj_database_url
 from dotenv import load_dotenv
 load_dotenv()
 
+env = environ.Env()
+
+environ.Env.read_env()
 
 DEBUG = True
 
-
 DATABASES = {
-    'default': {
-        'ENGINE': os.environ['db_engine'],
-        'NAME': os.environ['db_name'],
-        'USER': os.environ['db_user'],
-        'PASSWORD': os.environ['db_password'],
-        'HOST': os.environ['db_host'],
-        'PORT': os.environ['db_port'],
-        'OPTIONS': {'sslmode': 'require'},
-    }
+    'default': dj_database_url.parse(env('dev_DATABASE_URL'))
 }
