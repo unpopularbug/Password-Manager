@@ -15,7 +15,7 @@ else:
     from .prod_settings import *
     
     
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'https://dev-password-manager.up.railway.app/']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev-password-manager.up.railway.app/']
 
 CSRF_TRUSTED_ORIGINS = ['https://dev-password-manager.up.railway.app/']
 
