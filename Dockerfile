@@ -1,5 +1,7 @@
 FROM python:3.11-slim-buster
 
+ENV SECRET_KEY="your_secret_key_value"
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     pkg-config \
@@ -14,6 +16,8 @@ COPY requirements.txt requirements.txt
 COPY manage.py manage.py
 COPY Manager Manager
 COPY App App
+
+COPY .env .env
 
 RUN pip install --no-cache -r requirements.txt
 

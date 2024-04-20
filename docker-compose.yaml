@@ -3,5 +3,7 @@ services:
     build: .
     ports:
       - '${PORT}:8000'
+    env_file:
+      - .env
   redis:
     image: 'redis:slim'
