@@ -17,8 +17,6 @@ COPY manage.py manage.py
 COPY Manager Manager
 COPY App App
 
-COPY .env .env
-
 RUN pip install --no-cache -r requirements.txt
 
 RUN python manage.py collectstatic --noinput
