@@ -16,6 +16,7 @@ COPY Manager Manager
 COPY App App
 
 RUN pip install --no-cache -r requirements.txt
+RUN python manage.py collectstatic
 
 EXPOSE 8000
 
