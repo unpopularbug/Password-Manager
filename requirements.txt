@@ -25,3 +25,4 @@ typing_extensions==4.10.0
 tzdata==2024.1
 urllib3==2.2.1
 uuid==1.30
+whitenoise==6.6.0
