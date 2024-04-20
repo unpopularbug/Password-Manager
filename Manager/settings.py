@@ -26,9 +26,9 @@ DATABASES = {
 }
 
     
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev-password-manager.up.railway.app']
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
-CSRF_TRUSTED_ORIGINS = ['https://dev-password-manager.up.railway.app']
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 
 INTERNAL_IPS = (
     '127.0.0.1',
