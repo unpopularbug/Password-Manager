@@ -13,6 +13,8 @@ if DEBUG:
     from .dev_settings import *
 else:
     from .prod_settings import *
+    
+    
 ALLOWED_HOSTS = ['*']
 
 
@@ -25,7 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+    'rest_framework_jwt',
     'rest_framework',
     'App',
 ]
@@ -62,9 +64,14 @@ WSGI_APPLICATION = 'Manager.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR/ 'db.sqlite3',
-    }
+        'ENGINE': os.environ['db_engine'],
+        'NAME': os.environ['db_name'],
+        'USER': os.environ['db_user'],
+        'PASSWORD': os.environ['db_password'],
+        'HOST': os.environ['db_host'],
+        'PORT': os.environ['db_port'],
+        'OPTIONS': {'sslmode': 'require'},
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -97,3 +104,10 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'App.CustomUser'
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+}
