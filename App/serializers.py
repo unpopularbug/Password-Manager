@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
-from .models import CustomUser, Password
+from .models import CustomUser, Password, APIUser, APIKey
 
 #pylint: disable=no-member
 class UserSerializer(serializers.ModelSerializer):
@@ -20,7 +20,28 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [ "id", "email", "password"]
 
- 
+
+class APIUserSerializer(serializers.ModelSerializer):
+    email = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def create(self, validated_data):
+        user = APIUser.objects.create(
+            email = validated_data['email'],
+            first_name = validated_data['first_name'],
+            last_name = validated_data['last_name'],
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+    
+    class Meta:
+        model = APIUser
+        fields = ["id", "email", "first_name", "last_name", "password"]
+    
+    
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -64,3 +85,12 @@ class PasswordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Password
         fields = ['owner', 'site_name_or_url', 'email_used', 'username_used', 'password']
+        
+        
+class APIKeySerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    api_key = serializers.UUIDField(read_only=True)
+
+    class Meta:
+        model = APIKey
+        fields = ['owner', 'api_key']
