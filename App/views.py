@@ -9,7 +9,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import CustomUser, Password, APIUser
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
-from mylib.permissions import APIKeyPermission
+from .permissions import APIKeyPermission
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
