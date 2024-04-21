@@ -103,3 +103,12 @@ class APIUser(AbstractUser, PermissionsMixin):
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+    
+    
+class APIKey(models.Model):
+    owner = models.ForeignKey(APIUser, on_delete=models.CASCADE, null=False, blank=False)
+    api_key = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.owner.first_name} - Key: {self.api_key}"
