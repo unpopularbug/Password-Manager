@@ -1,4 +1,3 @@
-from django.http import JsonResponse
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
 from django.contrib.auth import login
@@ -7,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 
-from .models import CustomUser, Password
-from .serializers import UserSerializer, LoginSerializer, PasswordSerializer
+from .models import CustomUser, Password, APIUser
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
@@ -23,9 +22,23 @@ class UserViewset(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         
-        return JsonResponse(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         
 
+class APIUserViewset(viewsets.ModelViewSet):
+    queryset = APIUser.objects.all()
+    serializer_class = APIUserSerializer
+    permission_classes=[permissions.AllowAny]
+    
+    @action(methods=['POST'], detail=False)
+    def register(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
 class LoginViewset(APIView):
     serializer_class = LoginSerializer
     permission_classes = [permissions.AllowAny]
