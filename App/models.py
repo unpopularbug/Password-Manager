@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin, Group, Permission
+from django.contrib.auth.models import AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
 
 
@@ -94,9 +94,6 @@ class APIUser(AbstractUser, PermissionsMixin):
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
-    
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
     
     def has_module_perms(self, app_label):
         return True
