@@ -2,7 +2,7 @@ import uuid
 from rest_framework.permissions import BasePermission
 from rest_framework import exceptions
 
-from App.models import APIKey
+from .models import APIKey
 
 #pylint: disable=no-member
 class APIKeyPermission(BasePermission):
