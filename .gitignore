@@ -4,3 +4,4 @@ App/migrations/
 App/__pycache__/
 
 Manager/__pycache__/
+mylib/__pycache__/
