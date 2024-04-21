@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin, Group, Permission
+from django.utils.translation import gettext_lazy as _
 
 
 #pylint: disable=no-member
@@ -64,3 +65,41 @@ class Password(models.Model):
     
     def __str__(self):
         return f"{self.site_name_or_url} - {self.owner.email}"
+    
+
+class APIUser(AbstractUser, PermissionsMixin):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=25, null=False, blank=False)
+    last_name = models.CharField(max_length=25, null=False, blank=False)
+    
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
+    
+    groups = models.ManyToManyField(
+        Group,
+        verbose_name=_('groups'),
+        blank=True,
+        related_name='api_user',
+        related_query_name='user',
+    )
+    user_permissions = models.ManyToManyField(
+        Group,
+        verbose_name=_('user permissions'),
+        blank=True,
+        related_name='api_user_set',
+        related_query_name='user',
+    )
+    
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+    
+    def has_module_perms(self, app_label):
+        return True
+    
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
