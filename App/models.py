@@ -60,7 +60,7 @@ class Password(models.Model):
     owner = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=False, related_name='owner')
     site_name_or_url = models.CharField(max_length=255, null=True, blank=False)
     email_used = models.EmailField(null=True, blank=True)
-    username_used = models.CharField(max_length=25, null=True, blank=True)
+    username_used = models.CharField(max_length=255, null=True, blank=True)
     password = models.CharField(max_length=128, null=True)
     
     def __str__(self):
