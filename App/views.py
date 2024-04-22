@@ -1,21 +1,25 @@
 from rest_framework.response import Response
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, filters
 from django.contrib.auth import login, authenticate, logout
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.generics import ListAPIView
 
-from .models import CustomUser, Password, APIUser
+from .models import CustomUser, Password, ApiUser
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
 from .permissions import APIKeyPermission
+from .filters import MyDjangoFilter
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [APIKeyPermission]
+    filter_backends = [MyDjangoFilter]
+    search_fields = ['email', 'first_name', 'last_name']
     
     @action(methods=['POST'], detail=False)
     def register(self, request):
@@ -28,9 +32,11 @@ class UserViewset(viewsets.ModelViewSet):
         
 
 class APIUserViewset(viewsets.ModelViewSet):
-    queryset = APIUser.objects.all()
+    queryset = ApiUser.objects.all()
     serializer_class = APIUserSerializer
     permission_classes = [APIKeyPermission]
+    filter_backends = [MyDjangoFilter]
+    search_fields = ['email', 'first_name', 'last_name', 'phone_number']
     
     @action(methods=['POST'], detail=False)
     def register(self, request):
@@ -40,6 +46,7 @@ class APIUserViewset(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     
 class LoginViewset(APIView):
     serializer_class = LoginSerializer
@@ -63,7 +70,7 @@ class LoginViewset(APIView):
 
 
 
-class UserLogoutViewset(APIView):
+class LogoutViewset(APIView):
     permission_classes = [APIKeyPermission]
     authentication_classes = [JWTAuthentication]
     
@@ -77,6 +84,8 @@ class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
     permission_classes = [APIKeyPermission]
+    filter_backends = [MyDjangoFilter]
+    search_fields = ['site_name_or_url', 'email_used', 'username_used']
     
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
