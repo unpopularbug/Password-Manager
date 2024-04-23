@@ -1,7 +1,8 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import AbstractUser, AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
+from django.core.validators import RegexValidator
 
 
 #pylint: disable=no-member
@@ -67,11 +68,13 @@ class Password(models.Model):
         return f"{self.site_name_or_url} - {self.owner.email}"
     
 
-class APIUser(AbstractUser, PermissionsMixin):
+class ApiUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=25, null=False, blank=False)
     last_name = models.CharField(max_length=25, null=False, blank=False)
+    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$', message="Phone number must be in the format: '+999999999'. Up to 15 digits allowed.")
+    phone_number = models.CharField(validators=[phone_regex], max_length=17, null=True, blank=True)
     
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -103,7 +106,7 @@ class APIUser(AbstractUser, PermissionsMixin):
     
     
 class APIKey(models.Model):
-    owner = models.ForeignKey(APIUser, on_delete=models.CASCADE, null=False, blank=False)
+    owner = models.ForeignKey(ApiUser, on_delete=models.CASCADE, null=False, blank=False)
     api_key = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     

@@ -1,16 +1,16 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import UserViewset, LoginViewset, UserLogoutViewset, PasswordViewset, APIUserViewset
+from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, APIUserViewset
 
 router = DefaultRouter()
-router.register(r'accounts/signup', UserViewset, basename='Signup')
-router.register(r'accounts/api-user/signup', APIUserViewset, basename='API-user-signup')
-router.register(r'dashboard', PasswordViewset, basename='Dashboard')
+router.register(r'accounts/user', UserViewset, basename='custom user')
+router.register(r'accounts/api-user', APIUserViewset, basename='api user')
+router.register(r'dashboard', PasswordViewset, basename='dashboard')
 
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('accounts/login/', LoginViewset.as_view(), name='Login'),
-    path('accounts/logout/', UserLogoutViewset.as_view(), name='Logout'),
+    path('accounts/login/', LoginViewset.as_view(), name='login'),
+    path('accounts/logout/', LogoutViewset.as_view(), name='logout'),
 ]

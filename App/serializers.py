@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
-from .models import CustomUser, Password, APIUser, APIKey
+from .models import CustomUser, Password, ApiUser, APIKey
 
 #pylint: disable=no-member
 class UserSerializer(serializers.ModelSerializer):
@@ -18,28 +18,30 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = [ "id", "email", "password"]
+        fields = ["id", "email", "first_name", "last_name", "password"]
 
-
+        
 class APIUserSerializer(serializers.ModelSerializer):
     email = serializers.CharField()
     first_name = serializers.CharField()
     last_name = serializers.CharField()
+    phone_number = serializers.CharField()
     password = serializers.CharField(write_only=True)
     
     def create(self, validated_data):
-        user = APIUser.objects.create(
+        user = ApiUser.objects.create(
             email = validated_data['email'],
             first_name = validated_data['first_name'],
             last_name = validated_data['last_name'],
+            phone_number = validated_data['phone_number'],
         )
         user.set_password(validated_data['password'])
         user.save()
         return user
     
     class Meta:
-        model = APIUser
-        fields = ["id", "email", "first_name", "last_name", "password"]
+        model = ApiUser
+        fields = ["id", "email", "first_name", "last_name", "phone_number", "password"]
     
     
 class LoginSerializer(serializers.Serializer):
@@ -88,9 +90,9 @@ class PasswordSerializer(serializers.ModelSerializer):
         
         
 class APIKeySerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
     api_key = serializers.UUIDField(read_only=True)
 
     class Meta:
         model = APIKey
-        fields = ['owner', 'api_key']
+        fields = ['api_key']
