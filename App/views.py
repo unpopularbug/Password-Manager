@@ -1,12 +1,11 @@
 from rest_framework.response import Response
-from rest_framework import status, viewsets, filters
+from rest_framework import status, viewsets
 from django.contrib.auth import login, authenticate, logout
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.generics import ListAPIView
 
 from .models import CustomUser, Password, ApiUser
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
@@ -85,8 +84,8 @@ class PasswordViewset(viewsets.ModelViewSet):
     serializer_class = PasswordSerializer
     permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
-    search_fields = ['site_name_or_url', 'email_used', 'username_used']
-    
+    search_fields = ['application_name', 'site_url', 'email_used', 'username_used']
+
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
     
@@ -96,19 +95,50 @@ class PasswordViewset(viewsets.ModelViewSet):
         
         validated_data = serializer.validated_data
         
-        key = Fernet.generate_key()
-        fernet = Fernet(key)
-        encrypted_site_name = fernet.encrypt(validated_data['site_name_or_url'].encode())
-        encrypted_email = fernet.encrypt(validated_data['email_used'].encode())
-        encrypted_username = fernet.encrypt(validated_data['username_used'].encode())
-        encrypted_password = fernet.encrypt(validated_data['password'].encode())
+        fernet_key = Fernet.generate_key()
         
-        password_instance = serializer.save(
-            site_name_or_url=encrypted_site_name,
-            email_used=encrypted_email,
-            username_used=encrypted_username,
-            password=encrypted_password,
-        )
+        self.request.user.private_key = fernet_key
+        self.request.user.save()
+            
+        encrypted_data = {}
+        for key, value in validated_data.items():
+            fernet = Fernet(fernet_key)
+            encrypted_value = fernet.encrypt(value.encode())
+            encrypted_data[key] = encrypted_value
+        
+        password_instance = serializer.save(**encrypted_data)
 
         response_serializer = PasswordSerializer(password_instance)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+    
+    def decrypt_data(self, encrypted_data, fernet_key):
+        decrypted_data = {}
+        fernet = Fernet(fernet_key)
+        for key, value in encrypted_data.items():
+            decrypted_data[key] = fernet.decrypt(value).decode()
+        return decrypted_data
+    
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if instance.owner != request.user:
+            return Response({"error": "You are not authorized to view this password."}, status=status.HTTP_403_FORBIDDEN)
+
+        user_fernet_key = request.user.private_key
+
+        decrypted_data = {}
+        fernet = Fernet(user_fernet_key)
+
+        decrypted_data['application_name'] = fernet.decrypt(instance.application_name.encode()).decode()
+        decrypted_data['site_url'] = fernet.decrypt(instance.site_url.encode()).decode()
+        decrypted_data['email_used'] = fernet.decrypt(instance.email_used.encode()).decode()
+        decrypted_data['username_used'] = fernet.decrypt(instance.username_used.encode()).decode()
+        decrypted_data['password'] = fernet.decrypt(instance.password.encode()).decode()
+
+        serializer = self.get_serializer(decrypted_data)
+        return Response(serializer.data)
+    
+    
+    def get_queryset(self):
+        return Password.objects.filter(owner=self.request.user)
