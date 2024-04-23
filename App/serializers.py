@@ -67,7 +67,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
     site_name_or_url = serializers.CharField(max_length=20)
     email_used = serializers.CharField()
     username_used = serializers.CharField(max_length=25)
@@ -86,7 +86,7 @@ class PasswordSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Password
-        fields = ['owner', 'site_name_or_url', 'email_used', 'username_used', 'password']
+        fields = ['id', 'owner', 'site_name_or_url', 'email_used', 'username_used', 'password']
         
         
 class APIKeySerializer(serializers.ModelSerializer):
