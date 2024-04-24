@@ -67,28 +67,31 @@ class LoginSerializer(serializers.Serializer):
 
 
 class PasswordSerializer(serializers.ModelSerializer):
-    owner = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
-    site_name_or_url = serializers.CharField(max_length=20)
+    owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    application_name = serializers.CharField(max_length=20)
+    site_url = serializers.CharField(max_length=255)
     email_used = serializers.CharField()
     username_used = serializers.CharField(max_length=25)
-    password = serializers.CharField()
+    password = serializers.CharField(required=False)
+    length = serializers.IntegerField(required=False)
     
     def create(self, validated_data):
         new_password = Password.objects.create(
             owner = self.context['request'].user,
-            site_name_or_url = validated_data['site_name_or_url'],
+            application_name = validated_data['application_name'],
+            site_url = validated_data['site_url'],
             email_used  = validated_data['email_used'],
             username_used = validated_data['username_used'],
-            password = validated_data['password'],
+            password=validated_data.get('password', ''),
         )
         new_password.save()
         return new_password
     
     class Meta:
         model = Password
-        fields = ['owner', 'site_name_or_url', 'email_used', 'username_used', 'password']
-        
-        
+        fields = ['id', 'owner', 'application_name', 'site_url', 'email_used', 'username_used', 'password', 'length']
+
+         
 class APIKeySerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
     api_key = serializers.UUIDField(read_only=True)

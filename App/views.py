@@ -1,12 +1,15 @@
 from rest_framework.response import Response
-from rest_framework import status, viewsets, filters
+from rest_framework import status, viewsets
 from django.contrib.auth import login, authenticate, logout
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.generics import ListAPIView
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import get_object_or_404
 
 from .models import CustomUser, Password, ApiUser
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
@@ -68,8 +71,6 @@ class LoginViewset(APIView):
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-
-
 class LogoutViewset(APIView):
     permission_classes = [APIKeyPermission]
     authentication_classes = [JWTAuthentication]
@@ -78,37 +79,59 @@ class LogoutViewset(APIView):
     def post(self, request):
         logout(request)
         return Response({'message': 'User logged out successfully.'}, status=status.HTTP_200_OK)
-     
-    
+
 class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
     permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
-    search_fields = ['site_name_or_url', 'email_used', 'username_used']
-    
+    search_fields = ['application_name', 'site_url', 'email_used', 'username_used']
+
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
-    
-    def create(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        validated_data = serializer.validated_data
-        
-        key = Fernet.generate_key()
-        fernet = Fernet(key)
-        encrypted_site_name = fernet.encrypt(validated_data['site_name_or_url'].encode())
-        encrypted_email = fernet.encrypt(validated_data['email_used'].encode())
-        encrypted_username = fernet.encrypt(validated_data['username_used'].encode())
-        encrypted_password = fernet.encrypt(validated_data['password'].encode())
-        
-        password_instance = serializer.save(
-            site_name_or_url=encrypted_site_name,
-            email_used=encrypted_email,
-            username_used=encrypted_username,
-            password=encrypted_password,
-        )
+        self._encrypt_password(serializer.instance)
 
-        response_serializer = PasswordSerializer(password_instance)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        self._encrypt_password(instance, serializer.validated_data)
+        super().perform_update(serializer)
+
+    def _encrypt_password(self, instance, data=None):
+        fernet_key = instance.decryption_key
+        encrypted_data = self._encrypt_data(data or instance.__dict__, fernet_key)
+        for key, value in encrypted_data.items():
+            setattr(instance, key, value)
+        instance.save()
+
+    def _encrypt_data(self, data, fernet_key):
+        encrypted_data = {}
+        fernet = Fernet(fernet_key)
+        for key, value in data.items():
+            if isinstance(value, str):
+                encrypted_value = fernet.encrypt(value.encode()).decode()
+                encrypted_data[key] = encrypted_value
+        return encrypted_data
+
+    def _decrypt_data(self, instance, fernet_key):
+        fernet = Fernet(fernet_key)
+        decrypted_data = {}
+        for key, value in instance.__dict__.items():
+            if isinstance(value, str):
+                decrypted_value = fernet.decrypt(value.encode()).decode()
+                decrypted_data[key] = decrypted_value
+        return decrypted_data
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({"error": "You are not authorized to view this password."}, status=status.HTTP_403_FORBIDDEN)
+
+        fernet_key = instance.decryption_key
+        if not fernet_key:
+            return Response({"error": "Decryption key not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        decrypted_data = self._decrypt_data(instance, fernet_key)
+        return Response(decrypted_data)
+    
+    def get_queryset(self):
+        return Password.objects.filter(owner=self.request.user)
