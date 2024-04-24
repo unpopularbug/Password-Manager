@@ -22,7 +22,7 @@ PyJWT==2.4.0
 python-dotenv==1.0.1
 rapidfuzz==3.8.1
 requests==2.31.0
-sqlparse==0.4.4
+sqlparse==0.5.0
 thefuzz==0.22.1
 typing_extensions==4.10.0
 tzdata==2024.1
