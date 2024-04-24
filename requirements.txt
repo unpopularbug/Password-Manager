@@ -18,7 +18,7 @@ psycopg==3.1.18
 psycopg-binary==3.1.18
 psycopg2==2.9.9
 pycparser==2.21
-PyJWT==1.7.1
+PyJWT==2.4.0
 python-dotenv==1.0.1
 rapidfuzz==3.8.1
 requests==2.31.0
