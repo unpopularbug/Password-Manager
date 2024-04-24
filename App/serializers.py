@@ -72,7 +72,8 @@ class PasswordSerializer(serializers.ModelSerializer):
     site_url = serializers.CharField(max_length=255)
     email_used = serializers.CharField()
     username_used = serializers.CharField(max_length=25)
-    password = serializers.CharField()
+    password = serializers.CharField(required=False)
+    length = serializers.IntegerField(required=False)
     
     def create(self, validated_data):
         new_password = Password.objects.create(
@@ -81,16 +82,16 @@ class PasswordSerializer(serializers.ModelSerializer):
             site_url = validated_data['site_url'],
             email_used  = validated_data['email_used'],
             username_used = validated_data['username_used'],
-            password = validated_data['password'],
+            password=validated_data.get('password', ''),
         )
         new_password.save()
         return new_password
     
     class Meta:
         model = Password
-        fields = ['id', 'owner', 'application_name', 'site_url', 'email_used', 'username_used', 'password']
-        
-        
+        fields = ['id', 'owner', 'application_name', 'site_url', 'email_used', 'username_used', 'password', 'length']
+
+         
 class APIKeySerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
     api_key = serializers.UUIDField(read_only=True)
