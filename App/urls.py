@@ -6,7 +6,7 @@ from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, AP
 router = DefaultRouter()
 router.register(r'accounts/user', UserViewset, basename='custom user')
 router.register(r'accounts/api-user', APIUserViewset, basename='api user')
-router.register(r'dashboard', PasswordViewset, basename='dashboard')
+router.register(r'dashboard/passwords', PasswordViewset, basename='dashboard')
 
 
 urlpatterns = [
