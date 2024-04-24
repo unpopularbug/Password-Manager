@@ -3,7 +3,9 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
-
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from cryptography.fernet import Fernet
 
 #pylint: disable=no-member
 class UserManager(BaseUserManager):
@@ -41,8 +43,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     
-    private_key = models.BinaryField(null=True, blank=True)
-    
     USERNAME_FIELD = 'email'
     
     objects = UserManager()
@@ -66,9 +66,16 @@ class Password(models.Model):
     email_used = models.EmailField(null=True, blank=True)
     username_used = models.CharField(max_length=255, null=True, blank=True)
     password = models.CharField(max_length=128, null=True)
+    decryption_key = models.BinaryField(null=True)
     
     def __str__(self):
         return f"{self.application_name} - {self.owner.email}"
+    
+    def save(self, *args, **kwargs):
+        if not self.decryption_key:
+            fernet_key = Fernet.generate_key()
+            self.decryption_key = fernet_key
+        super().save(*args, **kwargs)
     
 
 class ApiUser(AbstractBaseUser, PermissionsMixin):
