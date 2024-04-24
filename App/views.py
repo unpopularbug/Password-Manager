@@ -83,6 +83,7 @@ class LogoutViewset(APIView):
 class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
+    permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
     search_fields = ['application_name', 'site_url', 'email_used', 'username_used']
 
