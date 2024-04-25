@@ -20,5 +20,5 @@ We all know the struggle of creating passwords in a hurry, forgetting them later
 ## Feedback
 #### We value your input! If you have any recommendations or encounter bugs, please let us know. Our two-developer team is here to assist you:
 
-*Server issues:* **Contact Brian on [platform.](link-to-Brian)**<br>
+*Server issues:* **Contact Brian through [E-mail.](mailto:brianmwangikamau4@gmail.com)**<br>
 *Desktop application issues:* **Contact Tonny on [platform.](link-to-Tonny)**
