@@ -9,9 +9,10 @@ from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
 
 
-from .models import CustomUser, Password, ApiUser, PasswordResetCode
+from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
@@ -30,9 +31,39 @@ class UserViewset(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        
+        user = serializer.instance
+        
+        verification_code = ''.join(random.choices(string.digits, k=6))
+        
+        VerificationCode.objects.create(user=user, code=verification_code)
+        
+        send_mail(
+            "Account Verification Code",
+            f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
         headers = self.get_success_headers(serializer.data)
         
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    @action(methods=['POST'], detail=False)
+    def confirm_code(self, request, user_id):
+        code = request.data.get('verification_code')
+        user = get_object_or_404(CustomUser, id=user_id)
+        
+        verification_code = VerificationCode.objects.filter(user=user).first()
+        
+        if verification_code and verification_code.code == code:
+            user.is_active = True
+            user.save()
+            verification_code.delete()
+            return Response({'message': 'Code confirmed. Account activated.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
         
 
 class APIUserViewset(viewsets.ModelViewSet):
@@ -64,6 +95,7 @@ class LoginViewset(APIView):
         password = serializer.validated_data['password']
         
         user = authenticate(request, email=email, password=password)
+        
         if user is not None:
             login(request, user)
             refresh = RefreshToken.for_user(user)
