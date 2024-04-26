@@ -41,8 +41,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=10, null=True, blank=True)
     last_name = models.CharField(max_length=10, null=True, blank=True)
-    
-    is_active = models.BooleanField(default=True)
+
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     
@@ -80,6 +80,31 @@ class Password(models.Model):
             self.decryption_key = fernet_key
         super().save(*args, **kwargs)
 
+
+class VerificationCode(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='verification_code')
+    code = models.CharField(unique=True, max_length=6)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    @classmethod
+    def create_unique_code(cls):
+        """Generate a unique 6-digit code."""
+        return ''.join(random.choices(string.digits, k=6))
+
+    @classmethod
+    def create(cls, user):
+        """Create a new PasswordResetCode instance with a unique code."""
+        code = cls.create_unique_code()
+        return cls.objects.create(user=user, code=code)
+    
+    @classmethod
+    def delete_expired_codes(cls):
+        """Delete verification codes older than 5 minutes."""
+        five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+        expired_codes = cls.objects.filter(created_at__lt=five_minutes_ago)
+        expired_codes.delete()
+        
+        
 class PasswordResetCode(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reset_codes')
     code = models.CharField(unique=True, max_length=6)
@@ -98,9 +123,9 @@ class PasswordResetCode(models.Model):
     
     @classmethod
     def delete_expired_codes(cls):
-        """Delete reset codes older than 10 minutes."""
-        ten_minutes_ago = timezone.now() - timezone.timedelta(minutes=10)
-        expired_codes = cls.objects.filter(created_at__lt=ten_minutes_ago)
+        """Delete reset codes older than 5 minutes."""
+        five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+        expired_codes = cls.objects.filter(created_at__lt=five_minutes_ago)
         expired_codes.delete()
     
     
