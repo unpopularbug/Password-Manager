@@ -61,7 +61,7 @@ class UserViewset(viewsets.ModelViewSet):
             user.is_active = True
             user.save()
             verification_code.delete()
-            return Response({'message': 'Code confirmed. Account activated.'}, status=status.HTTP_200_OK)
+            return Response({'message': 'Email verified & account activated.'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -220,5 +220,6 @@ class PasswordConfirmView(APIView):
         user = reset_code.user
         user.set_password(new_password)
         user.save()
+        reset_code.delete()
 
         return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
