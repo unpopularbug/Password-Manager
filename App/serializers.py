@@ -99,3 +99,12 @@ class APIKeySerializer(serializers.ModelSerializer):
     class Meta:
         model = APIKey
         fields = ['api_key']
+        
+        
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class PasswordConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    verification_code = serializers.CharField()
+    new_password = serializers.CharField()
