@@ -1,4 +1,7 @@
 import uuid
+import random
+import string
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
@@ -76,8 +79,24 @@ class Password(models.Model):
             fernet_key = Fernet.generate_key()
             self.decryption_key = fernet_key
         super().save(*args, **kwargs)
-    
 
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(unique=True, max_length=6)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    @classmethod
+    def create_unique_code(cls):
+        """Generate a unique 6-digit code."""
+        return ''.join(random.choices(string.digits, k=6))
+
+    @classmethod
+    def create(cls, user):
+        """Create a new PasswordResetCode instance with a unique code."""
+        code = cls.create_unique_code()
+        return cls.objects.create(user=user, code=code)
+    
+    
 class ApiUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
