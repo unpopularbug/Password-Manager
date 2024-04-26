@@ -156,7 +156,7 @@ class PasswordResetView(APIView):
 
         send_mail(
             "Password Reset Verification Code",
-            f"Your password reset verification code is: {verification_code}",
+            f"Dear User,\n\nYour password reset verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
             settings.EMAIL_HOST_USER,
             [email],
             fail_silently=False,
