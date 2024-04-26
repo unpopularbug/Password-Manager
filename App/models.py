@@ -96,6 +96,13 @@ class PasswordResetCode(models.Model):
         code = cls.create_unique_code()
         return cls.objects.create(user=user, code=code)
     
+    @classmethod
+    def delete_expired_codes(cls):
+        """Delete reset codes older than 10 minutes."""
+        ten_minutes_ago = timezone.now() - timezone.timedelta(minutes=10)
+        expired_codes = cls.objects.filter(created_at__lt=ten_minutes_ago)
+        expired_codes.delete()
+    
     
 class ApiUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
