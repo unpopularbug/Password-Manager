@@ -208,9 +208,12 @@ class PasswordConfirmView(APIView):
     permission_classes = [APIKeyPermission]
     
     def post(self, request):
-        email = request.data.get('email')
-        verification_code = request.data.get('verification_code')
-        new_password = request.data.get('new_password')
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        new_password = serializer.validated_data['new_password']
+        verification_code = serializer.validated_data['verification_code']
+        
 
         try:
             user = CustomUser.objects.get(email=email)
