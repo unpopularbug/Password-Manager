@@ -28,6 +28,12 @@ class UserViewset(viewsets.ModelViewSet):
     
     @action(methods=['POST'], detail=False)
     def register(self, request):
+        email = request.data.get('email', None)
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).exists()
+            if existing_user:
+                return Response({'detail': 'This email is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+            
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
