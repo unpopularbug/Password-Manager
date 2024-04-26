@@ -49,22 +49,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField(read_only=True)
     last_name = serializers.CharField(read_only=True)
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-
-        if email and password:
-            user = authenticate(email=email, password=password)
-            if not user:
-                msg = 'Access denied: wrong email or password.'
-                raise serializers.ValidationError(msg, code='authorization')
-        else:
-            msg = 'Both "email" and "password" are required.'
-            raise serializers.ValidationError(msg, code='authorization')
-        attrs['user'] = user
-        return attrs
-
+    
 
 class PasswordSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
