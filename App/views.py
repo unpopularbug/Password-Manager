@@ -6,15 +6,14 @@ from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
-from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import get_object_or_404
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import default_token_generator
 
 from .models import CustomUser, Password, ApiUser
-from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
+from django.conf import settings
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
@@ -135,3 +134,52 @@ class PasswordViewset(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return Password.objects.filter(owner=self.request.user)
+    
+
+class PasswordResetView(APIView):
+    serializer_class = PasswordResetSerializer
+    permission_classes = [APIKeyPermission]
+    
+    def post(self, request):
+        email = request.data.get('email')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        verification_code = default_token_generator.make_token(user)
+
+        send_mail(
+            "Password Reset Verification Code",
+            f"Your password reset verification code is: {verification_code}",
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "A verification code has been sent to your email."}, status=status.HTTP_200_OK)
+    
+    
+class PasswordConfirmView(APIView):
+    serializer_class = PasswordConfirmSerializer
+    permission_classes = [APIKeyPermission]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        verification_code = request.data.get('verification_code')
+        new_password = request.data.get('new_password')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate verification code
+        if not default_token_generator.check_token(user, verification_code):
+            return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
