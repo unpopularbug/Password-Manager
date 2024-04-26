@@ -1,3 +1,5 @@
+import random
+import string
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from django.contrib.auth import login, authenticate, logout
@@ -7,9 +9,9 @@ from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
-from django.contrib.auth.tokens import default_token_generator
 
-from .models import CustomUser, Password, ApiUser
+
+from .models import CustomUser, Password, ApiUser, PasswordResetCode
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
@@ -148,7 +150,9 @@ class PasswordResetView(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
-        verification_code = default_token_generator.make_token(user)
+        verification_code = ''.join(random.choices(string.digits, k=6))
+        
+        PasswordResetCode.objects.create(user=user, code=verification_code)
 
         send_mail(
             "Password Reset Verification Code",
@@ -176,9 +180,12 @@ class PasswordConfirmView(APIView):
             return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
         # Validate verification code
-        if not default_token_generator.check_token(user, verification_code):
+        try:
+            reset_code = PasswordResetCode.objects.get(user__email=email, code=verification_code)
+        except PasswordResetCode.DoesNotExist:
             return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
 
+        user = reset_code.user
         user.set_password(new_password)
         user.save()
 
