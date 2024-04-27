@@ -52,7 +52,9 @@ class UserViewset(viewsets.ModelViewSet):
             fail_silently=False,
         )
         
-        headers = self.get_success_headers(serializer.data)
+        user_id = user.id
+        response_data = {'user_id': user_id}
+        headers = self.get_success_headers(response_data)
         
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     
@@ -109,6 +111,7 @@ class LoginViewset(APIView):
             return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 class LogoutViewset(APIView):
     permission_classes = [APIKeyPermission]
