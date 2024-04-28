@@ -12,7 +12,7 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 
 
-from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode
+from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode, QuickTip
 from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
@@ -245,3 +245,13 @@ class PasswordConfirmView(APIView):
         reset_code.delete()
 
         return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
+    
+    
+class QuickTipViewset(APIView):
+    permission_classes = [APIKeyPermission]
+    
+    def get(self, request):
+        queryset = QuickTip.objects.all()
+        return Response(data=queryset.values(), status=200)
+    
+    # Task: Schedule quick tips and show each for three days.
