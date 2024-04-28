@@ -6,8 +6,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
 from cryptography.fernet import Fernet
 
 #pylint: disable=no-member
@@ -70,9 +68,6 @@ class Password(models.Model):
     username_used = models.CharField(max_length=255, null=True, blank=True)
     password = models.CharField(max_length=128, null=True)
     decryption_key = models.BinaryField(null=True)
-    
-    def __str__(self):
-        return f"{self.application_name} - {self.owner.email}"
     
     def save(self, *args, **kwargs):
         if not self.decryption_key:
