@@ -13,12 +13,46 @@ from django.shortcuts import get_object_or_404
 
 
 from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode, QuickTip
-from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer, ResendCodeSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
 from django.conf import settings
 
 #pylint: disable=no-member
+def send_verification_code(request, user):
+    VerificationCode.objects.filter(user=user).delete()
+    
+    verification_code = ''.join(random.choices(string.digits, k=6))
+    
+    VerificationCode.objects.create(user=user, code=verification_code)
+    
+    send_mail(
+        "Account Verification Code",
+        f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
+        settings.EMAIL_HOST_USER,
+        [user.email],
+        fail_silently=False,
+    )
+    
+
+class ResendVerificationCode(APIView):
+    serializer_class = ResendCodeSerializer
+    
+    def post(self, request):
+        email = request.data.get('email', None)
+        
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                serializer = self.serializer_class(existing_user)
+                send_verification_code(request=request, user=existing_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
@@ -40,17 +74,7 @@ class UserViewset(viewsets.ModelViewSet):
         
         user = serializer.instance
         
-        verification_code = ''.join(random.choices(string.digits, k=6))
-        
-        VerificationCode.objects.create(user=user, code=verification_code)
-        
-        send_mail(
-            "Account Verification Code",
-            f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
-            settings.EMAIL_HOST_USER,
-            [user.email],
-            fail_silently=False,
-        )
+        send_verification_code(request=request, user=user)
         
         user_id = user.id
         response_data = {'user_id': user_id}
