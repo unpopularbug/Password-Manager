@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, APIUserViewset, PasswordResetView, PasswordConfirmView, QuickTipViewset
+from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, APIUserViewset, PasswordResetView, PasswordConfirmView, QuickTipViewset, ResendVerificationCode
 
 router = DefaultRouter()
 router.register(r'accounts/api-user', APIUserViewset, basename='register api user')
@@ -12,6 +12,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('accounts/user/', UserViewset.as_view({'post': 'register'}), name='register user'),
     path('accounts/user/<uuid:user_id>/confirm-code/', UserViewset.as_view({'post': 'confirm_code'}), name='confirm-code'),
+    path('resend-code/', ResendVerificationCode.as_view(), name='resend code'),
     path('accounts/login/', LoginViewset.as_view(), name='login'),
     path('accounts/logout/', LogoutViewset.as_view(), name='logout'),
     path('accounts/reset-password/', PasswordResetView.as_view(), name='Reset password'),
