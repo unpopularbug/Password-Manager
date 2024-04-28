@@ -1,10 +1,11 @@
 import uuid
+import random
+import string
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import RegexValidator
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
 from cryptography.fernet import Fernet
 
 #pylint: disable=no-member
@@ -38,8 +39,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=10, null=True, blank=True)
     last_name = models.CharField(max_length=10, null=True, blank=True)
-    
-    is_active = models.BooleanField(default=True)
+
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
     
@@ -68,16 +69,61 @@ class Password(models.Model):
     password = models.CharField(max_length=128, null=True)
     decryption_key = models.BinaryField(null=True)
     
-    def __str__(self):
-        return f"{self.application_name} - {self.owner.email}"
-    
     def save(self, *args, **kwargs):
         if not self.decryption_key:
             fernet_key = Fernet.generate_key()
             self.decryption_key = fernet_key
         super().save(*args, **kwargs)
-    
 
+
+class VerificationCode(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='verification_code')
+    code = models.CharField(unique=True, max_length=6)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    @classmethod
+    def create_unique_code(cls):
+        """Generate a unique 6-digit code."""
+        return ''.join(random.choices(string.digits, k=6))
+
+    @classmethod
+    def create(cls, user):
+        """Create a new PasswordResetCode instance with a unique code."""
+        code = cls.create_unique_code()
+        return cls.objects.create(user=user, code=code)
+    
+    @classmethod
+    def delete_expired_codes(cls):
+        """Delete verification codes older than 5 minutes."""
+        five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+        expired_codes = cls.objects.filter(created_at__lt=five_minutes_ago)
+        expired_codes.delete()
+        
+        
+class PasswordResetCode(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reset_codes')
+    code = models.CharField(unique=True, max_length=6)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    @classmethod
+    def create_unique_code(cls):
+        """Generate a unique 6-digit code."""
+        return ''.join(random.choices(string.digits, k=6))
+
+    @classmethod
+    def create(cls, user):
+        """Create a new PasswordResetCode instance with a unique code."""
+        code = cls.create_unique_code()
+        return cls.objects.create(user=user, code=code)
+    
+    @classmethod
+    def delete_expired_codes(cls):
+        """Delete reset codes older than 5 minutes."""
+        five_minutes_ago = timezone.now() - timezone.timedelta(minutes=5)
+        expired_codes = cls.objects.filter(created_at__lt=five_minutes_ago)
+        expired_codes.delete()
+    
+    
 class ApiUser(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
@@ -122,3 +168,9 @@ class APIKey(models.Model):
     
     def __str__(self):
         return f"{self.owner.first_name} - Key: {self.api_key}"
+    
+    
+class QuickTip(models.Model):
+    id = models.AutoField(primary_key=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    text = models.CharField(max_length=200, null=True, blank=False)

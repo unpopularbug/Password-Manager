@@ -1,3 +1,5 @@
+import random
+import string
 from rest_framework.response import Response
 from rest_framework import status, viewsets
 from django.contrib.auth import login, authenticate, logout
@@ -6,15 +8,15 @@ from rest_framework.decorators import action
 from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 
-from .models import CustomUser, Password, ApiUser
-from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer
+
+from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode, QuickTip
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
+from django.conf import settings
 
 #pylint: disable=no-member
 class UserViewset(viewsets.ModelViewSet):
@@ -26,12 +28,50 @@ class UserViewset(viewsets.ModelViewSet):
     
     @action(methods=['POST'], detail=False)
     def register(self, request):
+        email = request.data.get('email', None)
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).exists()
+            if existing_user:
+                return Response({'detail': 'This email is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+            
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
+        
+        user = serializer.instance
+        
+        verification_code = ''.join(random.choices(string.digits, k=6))
+        
+        VerificationCode.objects.create(user=user, code=verification_code)
+        
+        send_mail(
+            "Account Verification Code",
+            f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
+            settings.EMAIL_HOST_USER,
+            [user.email],
+            fail_silently=False,
+        )
+        
+        user_id = user.id
+        response_data = {'user_id': user_id}
+        headers = self.get_success_headers(response_data)
         
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
+    @action(methods=['POST'], detail=False)
+    def confirm_code(self, request, user_id):
+        code = request.data.get('verification_code')
+        user = get_object_or_404(CustomUser, id=user_id)
+        
+        verification_code = VerificationCode.objects.filter(user=user).first()
+        
+        if verification_code and verification_code.code == code:
+            user.is_active = True
+            user.save()
+            verification_code.delete()
+            return Response({'message': 'Email verified & account activated.'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
         
 
 class APIUserViewset(viewsets.ModelViewSet):
@@ -63,6 +103,7 @@ class LoginViewset(APIView):
         password = serializer.validated_data['password']
         
         user = authenticate(request, email=email, password=password)
+        
         if user is not None:
             login(request, user)
             refresh = RefreshToken.for_user(user)
@@ -70,6 +111,7 @@ class LoginViewset(APIView):
             return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 class LogoutViewset(APIView):
     permission_classes = [APIKeyPermission]
@@ -84,6 +126,7 @@ class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
     permission_classes = [APIKeyPermission]
+    authentication_classes = [JWTAuthentication]
     filter_backends = [MyDjangoFilter]
     search_fields = ['application_name', 'site_url', 'email_used', 'username_used']
 
@@ -134,4 +177,81 @@ class PasswordViewset(viewsets.ModelViewSet):
         return Response(decrypted_data)
     
     def get_queryset(self):
-        return Password.objects.filter(owner=self.request.user)
+        queryset = Password.objects.filter(owner=self.request.user)
+        
+        for obj in queryset:
+            fernet_key = obj.decryption_key
+            if fernet_key:
+                fernet = Fernet(fernet_key)
+                decrypted_application_name = fernet.decrypt(obj.application_name.encode()).decode()
+                obj.application_name = decrypted_application_name
+        
+        return queryset
+    
+
+class PasswordResetView(APIView):
+    serializer_class = PasswordResetSerializer
+    permission_classes = [APIKeyPermission]
+    
+    def post(self, request):
+        email = request.data.get('email')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        verification_code = ''.join(random.choices(string.digits, k=6))
+        
+        PasswordResetCode.objects.create(user=user, code=verification_code)
+
+        send_mail(
+            "Password Reset Verification Code",
+            f"Dear User,\n\nYour password reset verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "A verification code has been sent to your email."}, status=status.HTTP_200_OK)
+    
+    
+class PasswordConfirmView(APIView):
+    serializer_class = PasswordConfirmSerializer
+    permission_classes = [APIKeyPermission]
+    
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        new_password = serializer.validated_data['new_password']
+        verification_code = serializer.validated_data['verification_code']
+        
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "A user with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate verification code
+        try:
+            reset_code = PasswordResetCode.objects.get(user__email=email, code=verification_code)
+        except PasswordResetCode.DoesNotExist:
+            return Response({"error": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = reset_code.user
+        user.set_password(new_password)
+        user.save()
+        reset_code.delete()
+
+        return Response({"message": "Password reset successful."}, status=status.HTTP_200_OK)
+    
+    
+class QuickTipViewset(APIView):
+    permission_classes = [APIKeyPermission]
+    
+    def get(self, request):
+        queryset = QuickTip.objects.all()
+        return Response(data=queryset.values(), status=200)
+    
+    # Task: Schedule quick tips and show each for three days.
