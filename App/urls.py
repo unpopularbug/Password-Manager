@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, APIUserViewset, PasswordResetView, PasswordConfirmView
+from .views import UserViewset, LoginViewset, LogoutViewset, PasswordViewset, APIUserViewset, PasswordResetView, PasswordConfirmView, QuickTipViewset
 
 router = DefaultRouter()
 router.register(r'accounts/api-user', APIUserViewset, basename='register api user')
@@ -16,4 +16,5 @@ urlpatterns = [
     path('accounts/logout/', LogoutViewset.as_view(), name='logout'),
     path('accounts/reset-password/', PasswordResetView.as_view(), name='Reset password'),
     path('accounts/confirm-password-reset/', PasswordConfirmView.as_view(), name='Confirm password reset'),
+    path('dashboard/quick-tips/', QuickTipViewset.as_view(), name='Quick Tips'),
 ]
