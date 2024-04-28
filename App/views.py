@@ -126,6 +126,7 @@ class PasswordViewset(viewsets.ModelViewSet):
     queryset = Password.objects.all()
     serializer_class = PasswordSerializer
     permission_classes = [APIKeyPermission]
+    authentication_classes = [JWTAuthentication]
     filter_backends = [MyDjangoFilter]
     search_fields = ['application_name', 'site_url', 'email_used', 'username_used']
 
@@ -176,7 +177,16 @@ class PasswordViewset(viewsets.ModelViewSet):
         return Response(decrypted_data)
     
     def get_queryset(self):
-        return Password.objects.filter(owner=self.request.user)
+        queryset = Password.objects.filter(owner=self.request.user)
+        
+        for obj in queryset:
+            fernet_key = obj.decryption_key
+            if fernet_key:
+                fernet = Fernet(fernet_key)
+                decrypted_application_name = fernet.decrypt(obj.application_name.encode()).decode()
+                obj.application_name = decrypted_application_name
+        
+        return queryset
     
 
 class PasswordResetView(APIView):
