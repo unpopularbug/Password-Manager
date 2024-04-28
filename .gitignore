@@ -1,5 +1,6 @@
 .env
 venv/
+Desktop/
 App/migrations/
 App/__pycache__/
 
