@@ -90,7 +90,7 @@ class UserViewset(viewsets.ModelViewSet):
         verification_code = VerificationCode.objects.filter(user=user).first()
         
         if verification_code and verification_code.code == code:
-            user.is_active = True
+            user.is_verified = True
             user.save()
             verification_code.delete()
             return Response({'message': 'Email verified & account activated.'}, status=status.HTTP_200_OK)
@@ -129,10 +129,13 @@ class LoginViewset(APIView):
         user = authenticate(request, email=email, password=password)
         
         if user is not None:
-            login(request, user)
-            refresh = RefreshToken.for_user(user)
-            token = str(refresh.access_token)
-            return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
+            if user.is_verified == True:
+                login(request, user)
+                refresh = RefreshToken.for_user(user)
+                token = str(refresh.access_token)
+                return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
+            elif user.is_verified == False:
+                return Response({'error': 'Your account needs to be verified to proceed.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
