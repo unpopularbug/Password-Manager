@@ -9,6 +9,8 @@ from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.shortcuts import get_object_or_404
 
 
@@ -18,6 +20,7 @@ from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
 from django.conf import settings
 
+
 #pylint: disable=no-member
 def send_verification_code(request, user):
     VerificationCode.objects.filter(user=user).delete()
@@ -26,13 +29,29 @@ def send_verification_code(request, user):
     
     VerificationCode.objects.create(user=user, code=verification_code)
     
-    send_mail(
-        "Account Verification Code",
-        f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
-        settings.EMAIL_HOST_USER,
-        [user.email],
-        fail_silently=False,
-    )
+    subject = "Account Verification Code"
+    sender_name = 'The Two Devs Team'
+    sender_email = settings.EMAIL_HOST_USER
+    recipient_email = user.email
+
+    html_message = render_to_string('verification_email.html', {
+        'verification_code': verification_code,
+        'sender_name': sender_name,
+    })
+
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            f"{sender_name} <{sender_email}>",
+            [recipient_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        print(f"Error sending email: {e}")
     
 
 class ResendVerificationCode(APIView):
