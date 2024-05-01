@@ -70,7 +70,57 @@ class ResendVerificationCode(APIView):
                 return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
-                
+
+
+
+def send_reset_code(request, user):
+    PasswordResetCode.objects.filter(user=user).delete()
+    
+    verification_code = ''.join(random.choices(string.digits, k=6))
+    
+    PasswordResetCode.objects.create(user=user, code=verification_code)
+    
+    subject = "Password Reset Code"
+    sender_name = 'The Two Devs Team'
+    sender_email = settings.EMAIL_HOST_USER
+    recipient_email = user.email
+
+    html_message = render_to_string('reset_code_email.html', {
+        'verification_code': verification_code,
+        'sender_name': sender_name,
+    })
+
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            f"{sender_name} <{sender_email}>",
+            [recipient_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        
+
+class ResendPasswordResetCode(APIView):
+    serializer_class = ResendCodeSerializer
+    
+    def post(self, request):
+        email = request.data.get('email', None)
+        
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                serializer = self.serializer_class(existing_user)
+                send_reset_code(request=request, user=existing_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)    
 
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
