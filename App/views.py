@@ -251,15 +251,31 @@ class PasswordResetView(APIView):
         
         PasswordResetCode.objects.create(user=user, code=verification_code)
 
-        send_mail(
-            "Password Reset Verification Code",
-            f"Dear User,\n\nYour password reset verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
-            settings.EMAIL_HOST_USER,
-            [email],
-            fail_silently=False,
-        )
+        subject = "Password Reset Code"
+        sender_name = 'The Two Devs Team'
+        sender_email = settings.EMAIL_HOST_USER
+        recipient_email = user.email
 
-        return Response({"message": "A verification code has been sent to your email."}, status=status.HTTP_200_OK)
+        html_message = render_to_string('reset_code_email.html', {
+            'verification_code': verification_code,
+            'sender_name': sender_name,
+        })
+
+        plain_message = strip_tags(html_message)
+
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                f"{sender_name} <{sender_email}>",
+                [recipient_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Error sending email: {e}")
+
+        return Response({"message": "A reset code has been sent to your email."}, status=status.HTTP_200_OK)
     
     
 class PasswordConfirmView(APIView):
