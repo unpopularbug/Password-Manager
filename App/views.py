@@ -125,7 +125,7 @@ class ResendPasswordResetCode(APIView):
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [APIKeyPermission]
+    # permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
     search_fields = ['email', 'first_name', 'last_name']
     
@@ -165,6 +165,48 @@ class UserViewset(viewsets.ModelViewSet):
             return Response({'message': 'Email verified & account activated.'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    
+    @action(methods=['GET'], detail=True)
+    def get(self, request, pk=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+        
+    @action(methods=['PUT'], detail=True)
+    def put(self, request, pk=None):
+        instance = self.get_object()
+
+        email = request.data.get('email', instance.email)
+        
+        if email != instance.email:
+            existing_user = CustomUser.objects.filter(email=email).exists()
+            if existing_user:
+                return Response({'detail': 'This email is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                instance.email = email
+                instance.is_verified = False
+                instance.save()
+        
+        send_verification_code(request=request, user=instance)
+
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        serializer.save()
+        
+        return Response(status=status.HTTP_200_OK)
+        
+    
+    @action(methods=['DELETE'], detail=True)
+    def delete(self, request, pk=None):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        
         
 
 class APIUserViewset(viewsets.ModelViewSet):
