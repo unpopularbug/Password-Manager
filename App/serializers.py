@@ -1,9 +1,15 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate
 
 from .models import CustomUser, Password, ApiUser, APIKey
 
 #pylint: disable=no-member
+class ResendCodeSerializer(serializers.Serializer):
+    email = serializers.CharField()
+    
+    class Meta:
+        fields = ["email"]
+    
+
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.CharField()
     password = serializers.CharField(write_only=True)

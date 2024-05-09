@@ -9,20 +9,123 @@ from cryptography.fernet import Fernet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.shortcuts import get_object_or_404
 
 
 from .models import CustomUser, Password, ApiUser, VerificationCode, PasswordResetCode, QuickTip
-from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer
+from .serializers import UserSerializer, LoginSerializer, PasswordSerializer, APIUserSerializer, PasswordResetSerializer, PasswordConfirmSerializer, ResendCodeSerializer
 from .permissions import APIKeyPermission
 from .filters import MyDjangoFilter
 from django.conf import settings
 
+
 #pylint: disable=no-member
+def send_verification_code(request, user):
+    VerificationCode.objects.filter(user=user).delete()
+    
+    verification_code = ''.join(random.choices(string.digits, k=6))
+    
+    VerificationCode.objects.create(user=user, code=verification_code)
+    
+    subject = "Account Verification Code"
+    sender_name = 'The Two Devs Team'
+    sender_email = settings.EMAIL_HOST_USER
+    recipient_email = user.email
+
+    html_message = render_to_string('verification_email.html', {
+        'verification_code': verification_code,
+        'sender_name': sender_name,
+    })
+
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            f"{sender_name} <{sender_email}>",
+            [recipient_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        print(f"Error sending email: {e}")
+    
+
+class ResendVerificationCode(APIView):
+    serializer_class = ResendCodeSerializer
+    
+    def post(self, request):
+        email = request.data.get('email', None)
+        
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                serializer = self.serializer_class(existing_user)
+                send_verification_code(request=request, user=existing_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+def send_reset_code(request, user):
+    PasswordResetCode.objects.filter(user=user).delete()
+    
+    verification_code = ''.join(random.choices(string.digits, k=6))
+    
+    PasswordResetCode.objects.create(user=user, code=verification_code)
+    
+    subject = "Password Reset Code"
+    sender_name = 'The Two Devs Team'
+    sender_email = settings.EMAIL_HOST_USER
+    recipient_email = user.email
+
+    html_message = render_to_string('reset_code_email.html', {
+        'verification_code': verification_code,
+        'sender_name': sender_name,
+    })
+
+    plain_message = strip_tags(html_message)
+
+    try:
+        send_mail(
+            subject,
+            plain_message,
+            f"{sender_name} <{sender_email}>",
+            [recipient_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        
+
+class ResendPasswordResetCode(APIView):
+    serializer_class = ResendCodeSerializer
+    
+    def post(self, request):
+        email = request.data.get('email', None)
+        
+        if email:
+            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user:
+                serializer = self.serializer_class(existing_user)
+                send_reset_code(request=request, user=existing_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'detail': 'User with this email does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)    
+
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [APIKeyPermission]
+    # permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
     search_fields = ['email', 'first_name', 'last_name']
     
@@ -40,17 +143,7 @@ class UserViewset(viewsets.ModelViewSet):
         
         user = serializer.instance
         
-        verification_code = ''.join(random.choices(string.digits, k=6))
-        
-        VerificationCode.objects.create(user=user, code=verification_code)
-        
-        send_mail(
-            "Account Verification Code",
-            f"Dear User,\n\nYour account verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
-            settings.EMAIL_HOST_USER,
-            [user.email],
-            fail_silently=False,
-        )
+        send_verification_code(request=request, user=user)
         
         user_id = user.id
         response_data = {'user_id': user_id}
@@ -66,12 +159,54 @@ class UserViewset(viewsets.ModelViewSet):
         verification_code = VerificationCode.objects.filter(user=user).first()
         
         if verification_code and verification_code.code == code:
-            user.is_active = True
+            user.is_verified = True
             user.save()
             verification_code.delete()
             return Response({'message': 'Email verified & account activated.'}, status=status.HTTP_200_OK)
         else:
             return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    
+    @action(methods=['GET'], detail=True)
+    def get(self, request, pk=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+        
+    @action(methods=['PUT'], detail=True)
+    def put(self, request, pk=None):
+        instance = self.get_object()
+
+        email = request.data.get('email', instance.email)
+        
+        if email != instance.email:
+            existing_user = CustomUser.objects.filter(email=email).exists()
+            if existing_user:
+                return Response({'detail': 'This email is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                instance.email = email
+                instance.is_verified = False
+                instance.save()
+        
+        send_verification_code(request=request, user=instance)
+
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        
+        serializer.save()
+        
+        return Response(status=status.HTTP_200_OK)
+        
+    
+    @action(methods=['DELETE'], detail=True)
+    def delete(self, request, pk=None):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        
         
 
 class APIUserViewset(viewsets.ModelViewSet):
@@ -105,10 +240,13 @@ class LoginViewset(APIView):
         user = authenticate(request, email=email, password=password)
         
         if user is not None:
-            login(request, user)
-            refresh = RefreshToken.for_user(user)
-            token = str(refresh.access_token)
-            return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
+            if user.is_verified == True:
+                login(request, user)
+                refresh = RefreshToken.for_user(user)
+                token = str(refresh.access_token)
+                return Response({'token': token, 'user': user.id}, status=status.HTTP_200_OK)
+            elif user.is_verified == False:
+                return Response({'error': 'Your account needs to be verified to proceed.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -205,15 +343,31 @@ class PasswordResetView(APIView):
         
         PasswordResetCode.objects.create(user=user, code=verification_code)
 
-        send_mail(
-            "Password Reset Verification Code",
-            f"Dear User,\n\nYour password reset verification code is: {verification_code}.\n\nThis code is valid for 5 minutes.\n\nThank you!",
-            settings.EMAIL_HOST_USER,
-            [email],
-            fail_silently=False,
-        )
+        subject = "Password Reset Code"
+        sender_name = 'The Two Devs Team'
+        sender_email = settings.EMAIL_HOST_USER
+        recipient_email = user.email
 
-        return Response({"message": "A verification code has been sent to your email."}, status=status.HTTP_200_OK)
+        html_message = render_to_string('reset_code_email.html', {
+            'verification_code': verification_code,
+            'sender_name': sender_name,
+        })
+
+        plain_message = strip_tags(html_message)
+
+        try:
+            send_mail(
+                subject,
+                plain_message,
+                f"{sender_name} <{sender_email}>",
+                [recipient_email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Error sending email: {e}")
+
+        return Response({"message": "A reset code has been sent to your email."}, status=status.HTTP_200_OK)
     
     
 class PasswordConfirmView(APIView):

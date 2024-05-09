@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset Code</title>
+</head>
+<body>
+    <div style="font-family: Helvetica,Arial,sans-serif;min-width:1000px;overflow:auto;line-height:2">
+        <div style="margin:50px auto;width:70%;padding:20px 0">
+            <div style="border-bottom:1px solid #eee">
+                <h2 style="font-size:1.4em;color: #00466a;text-decoration:none;font-weight:600">Password Reset Code</h2>
+            </div>
+            <div class="content" style="font-size:1.1em">
+                <p>Dear User,</p>
+                <p>Your password reset code is: <strong style="background: #00466a;margin: 0 auto;width: max-content;padding: 0 10px;color: #fff;border-radius: 4px;">{{ verification_code }}</strong><br>This code is valid for 5 minutes.</p>
+                <p style="font-size:0.9em;">Sincerely,<br /><strong>{{ sender_name }}</strong></p>
+            </div>
+            <p style="text-align: center; font-size: 0.9em; margin-top: 20px;">For any assistance, please reply to this email address.</p>
+            <hr style="border:none;border-top:1px solid #eee" />
+            <div style="text-align:center;padding:8px 0;color:#615e5e;font-size:0.8em;line-height:1;font-weight:300">
+                <p>{{ sender_name }}</p>
+                <p>Nakuru, Kenya</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
