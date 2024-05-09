@@ -29,5 +29,4 @@ Welcome to the beta phase of our Password Manager! Join us in shaping the future
 ## Feedback
 #### We value your input! If you have any recommendations or encounter bugs, please let us know. Our two-developer team is here to assist you:
 
-*Server issues:* **Contact Brian through [**E-mail.**](mailto:brianmwangikamau4@gmail.com)**<br>
-*Desktop application issues:* **Contact Tonny on [**N/A.**](link-to-Tonny)**
+*Send us an [__email__](mailto:twoteamcoders@gmail.com)*
