@@ -125,9 +125,8 @@ class ResendPasswordResetCode(APIView):
 class UserViewset(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    # permission_classes = [APIKeyPermission]
+    permission_classes = [APIKeyPermission]
     filter_backends = [MyDjangoFilter]
-    search_fields = ['email', 'first_name', 'last_name']
     
     @action(methods=['POST'], detail=False)
     def register(self, request):
