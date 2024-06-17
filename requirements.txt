@@ -36,13 +36,13 @@ python-crontab==3.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 rapidfuzz==3.8.1
-requests==2.31.0
+requests==2.32.2
 six==1.16.0
 sqlparse==0.4.4
 thefuzz==0.22.1
 typing_extensions==4.10.0
 tzdata==2024.1
-urllib3==2.2.1
+urllib3==2.2.2
 uuid==1.30
 vine==5.1.0
 wcwidth==0.2.13
